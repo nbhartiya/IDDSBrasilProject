@@ -1,0 +1,27 @@
+<h1>Listing remote_sms</h1>
+
+<table>
+  <tr>
+    <th>From</th>
+    <th>Message</th>
+    <th>Secret</th>
+    <th></th>
+    <th></th>
+    <th></th>
+  </tr>
+
+<% @remote_sms.each do |remote_sm| %>
+  <tr>
+    <td><%= remote_sm.from %></td>
+    <td><%= remote_sm.message %></td>
+    <td><%= remote_sm.secret %></td>
+    <td><%= link_to 'Show', remote_sm %></td>
+    <td><%= link_to 'Edit', edit_remote_sm_path(remote_sm) %></td>
+    <td><%= link_to 'Destroy', remote_sm, confirm: 'Are you sure?', method: :delete %></td>
+  </tr>
+<% end %>
+</table>
+
+<br />
+
+<%= link_to 'New Remote sm', new_remote_sm_path %>

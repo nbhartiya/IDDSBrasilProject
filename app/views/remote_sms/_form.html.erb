@@ -1,0 +1,29 @@
+<%= form_for(@remote_sm) do |f| %>
+  <% if @remote_sm.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(@remote_sm.errors.count, "error") %> prohibited this remote_sm from being saved:</h2>
+
+      <ul>
+      <% @remote_sm.errors.full_messages.each do |msg| %>
+        <li><%= msg %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="field">
+    <%= f.label :from %><br />
+    <%= f.text_field :from %>
+  </div>
+  <div class="field">
+    <%= f.label :message %><br />
+    <%= f.text_field :message %>
+  </div>
+  <div class="field">
+    <%= f.label :secret %><br />
+    <%= f.text_field :secret %>
+  </div>
+  <div class="actions">
+    <%= f.submit %>
+  </div>
+<% end %>

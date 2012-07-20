@@ -1,0 +1,20 @@
+<p id="notice"><%= notice %></p>
+
+<p>
+  <b>From:</b>
+  <%= @remote_sm.from %>
+</p>
+
+<p>
+  <b>Message:</b>
+  <%= @remote_sm.message %>
+</p>
+
+<p>
+  <b>Secret:</b>
+  <%= @remote_sm.secret %>
+</p>
+
+
+<%= link_to 'Edit', edit_remote_sm_path(@remote_sm) %> |
+<%= link_to 'Back', remote_sms_path %>

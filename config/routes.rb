@@ -1,4 +1,6 @@
 IDDSDreams::Application.routes.draw do
+  resources :remote_sms
+
   resources :users
 
   # The priority is based upon order of creation:

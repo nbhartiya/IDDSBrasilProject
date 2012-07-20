@@ -1,0 +1,25 @@
+<p id="notice"><%= notice %></p>
+
+<p>
+  <b>User name:</b>
+  <%= @user.user_name %>
+</p>
+
+<p>
+  <b>User phone:</b>
+  <%= @user.user_phone %>
+</p>
+
+<p>
+  <b>Dream:</b>
+  <%= @user.dream %>
+</p>
+
+<p>
+  <b>Dream cost:</b>
+  <%= @user.dream_cost %>
+</p>
+
+
+<%= link_to 'Edit', edit_user_path(@user) %> |
+<%= link_to 'Back', users_path %>

@@ -1,0 +1,13 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/Fixtures.html
+
+one:
+  user_name: MyString
+  user_phone: MyString
+  dream: MyString
+  dream_cost: 9.99
+
+two:
+  user_name: MyString
+  user_phone: MyString
+  dream: MyString
+  dream_cost: 9.99

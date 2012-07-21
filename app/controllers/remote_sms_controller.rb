@@ -1,6 +1,6 @@
 
 class RemoteSmsController < ApplicationController
-  include RemoteSmsHelper
+  include RemoteSmsHelper #USES HELPER FUNCTION TO CONTROL WHETHER SMS IS SENT TO PHONE OR JUST LOGGED
   
   # GET /remote_sms
   # GET /remote_sms.json
@@ -44,10 +44,13 @@ class RemoteSmsController < ApplicationController
   # POST /remote_sms.json
   def create
     @remote_sm = nil
+    
     logger.info("received an SMS: #{params}") #LOG EACH MESSAGE
-    if params[:remote_sm]
+    
+    if params[:remote_sm] #!!!NEED TO UNDERSTAND WHEN THIS IS TRUE AND WHEN FALSE....!!!
       @remote_sm = RemoteSm.new(params[:remote_sm])
-      respond_to do |format|
+      
+      respond_to do |format| #STUFF THAT WAS THERE BEFORE (SAVING A NEW REMOTE SMS)
         if @remote_sm.save
           format.html { redirect_to @remote_sm, notice: 'Remote sm was successfully created.' }
           format.json { render json: @remote_sm, status: :created, location: @remote_sm }
@@ -61,24 +64,20 @@ class RemoteSmsController < ApplicationController
       subset[:from] = params[:from]
       subset[:message] = params[:message]
       subset[:secret] = params[:secret]
+      #CREATED 'SUBSET' BECAUSE OUR INPUT HAS MORE PARAMETERS THAN WE NEED TO SAVE
       @remote_sm = RemoteSm.new(subset)
       success = @remote_sm.save
       if success
-        sendSMS(@remote_sm.from,'Kikko!')
-        #account_sid = 'AC2894091dd9e7a5b3aab955007ba8ad7a'
-        #auth_token = '83f1ad3c2360f21d1e02d68b7c0009b9'
-        #logger.info("#{account_sid}, #{auth_token}")
-        #client = Twilio::REST::Client.new(account_sid, auth_token)
-        #client.account.sms.messages.create(:from => '+12133443930', :to => @remote_sm.from, :body => 'Miguel who is your 3am meeting with?')
+        sendSMS(@remote_sm.from,'Kikko!') #USES sendSMS FUNCTION FROM REMOTE SMS HELPER TO MOCK THE SENDING OF A MESSAGE
       end
 
       respond_to do |format|
         if success
           format.html { render :nothing => true, :status => 201 }
-          format.json { render :json => '{"payload" : {"success" : true}}', :status => 201 }
+          format.json { render :json => '{"payload" : {"success" : true}}', :status => 201 } #PAYLOAD IS WHAT SMSSYNC EXPECTS TO SEE
         else
           format.html { render :nothing => true, :status => 500 }
-          format.json { render :json => '{"success" : false}', :status => 500 }
+          format.json { render :json => '{"payload" : {"success" : false}}', :status => 500 }
         end
       end
     end

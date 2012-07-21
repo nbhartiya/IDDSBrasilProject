@@ -20,10 +20,15 @@ module RemoteSmsHelper
       sendSMS(sms.from, "You are an unkown users, fuck off")
     else
       users.each do |user|
+        logger.info(user)
         parsed = parseText(sms.message)
         case parsed[:type]
         when :saved
           handleSaved(user, parsed)
+        when :purchase
+          handlePurchase(user, parsed)
+        when :status
+          handleStatus(user, parsed)
         else
           handleError(user, parsed)
         end
@@ -36,11 +41,32 @@ module RemoteSmsHelper
             "Try sending 'purchase <price>' or 'saved <price>'")
   end
   
+  def handlePurchase(u, parsed)
+    if u.monthly_savings <= parsed[:value]
+      sendSMS(u.user_phone, "You will need to reduce your other purchases in order to make this purchase")
+    else
+      time = calcTimeToFinish(u.dream_cost, u.monthly_savings)
+      logger.info(time)
+      newtime = calcTimeToFinish(u.dream_cost, u.monthly_savings - parsed[:value])
+      logger.info(newtime)
+      difference = newtime - time
+      sendSMS(u.user_phone, "If you make this purhcase, your dream will be #{newtime} months away. That is #{difference} more than before.")
+    end
+  end
+  
   def handleSaved(u, parsed)
     logger.info(u)
     u.dream_cost -= parsed[:value]
     u.save()
     sendTimeRemaining(u)
+  end
+  
+  def handleStatus (user, parsed)
+    sendSMS(user.user_phone, user.to_s)
+  end
+  
+  def calcTimeToFinish(total, monthly)
+    return (total / monthly).ceil
   end
   
   def sendTimeRemaining(u)
@@ -49,11 +75,10 @@ module RemoteSmsHelper
     elsif u.monthly_savings <= 0
       sendSMS(u.user_phone, "Without saving, you will not become closer to your dream")
     else
-      time = (u.dream_cost / u.monthly_savings).ceil
+      time = calcTimeToFinish(u.dream_cost, u.monthly_savings)
       sendSMS(u.user_phone, "Your dream is #{time} months away")
     end
   end
-  
   
   def parseText(message)
     res = {}

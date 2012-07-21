@@ -5,6 +5,7 @@ class CreateUsers < ActiveRecord::Migration
       t.string :user_phone
       t.string :dream
       t.decimal :dream_cost
+      t.decimal :monthly_savings
 
       t.timestamps
     end

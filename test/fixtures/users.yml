@@ -5,9 +5,11 @@ one:
   user_phone: MyString
   dream: MyString
   dream_cost: 9.99
+  monthly_savings: 9.99
 
 two:
   user_name: MyString
   user_phone: MyString
   dream: MyString
   dream_cost: 9.99
+  monthly_savings: 9.99

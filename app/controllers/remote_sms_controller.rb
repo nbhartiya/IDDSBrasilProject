@@ -68,7 +68,9 @@ class RemoteSmsController < ApplicationController
       @remote_sm = RemoteSm.new(subset)
       success = @remote_sm.save
       if success
-        sendSMS(@remote_sm.from,'Kikko!') #USES sendSMS FUNCTION FROM REMOTE SMS HELPER TO MOCK THE SENDING OF A MESSAGE
+        receivedSMS(@remote_sm)
+        # This should turn into queuing on a SMS handler queue when
+        # we become a real boy
       end
 
       respond_to do |format|

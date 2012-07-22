@@ -2,7 +2,10 @@ module RemoteSmsHelper
   
   require 'twilio-ruby' #Get this to use the Twilio Gem
   
+  #Sends SMS
   def sendSMS (to, message)
+    # Checks if the phone number is in the right format.
+    # If not, it makes it into the right format for Twilio.
     if to[1]=='5'
       logger.info(to[1])
       logger.info("true")
@@ -10,8 +13,10 @@ module RemoteSmsHelper
     else
       to_corrected='+55'+to.slice(1..-1)
     end
+    # Prints the phone number it is texting
     logger.info("To #{to}")
     
+    # Only sends text through Twilio if the below line is changed to "true"
     if false
       #MATTS ACCOUNT
       account_sid = 'AC2894091dd9e7a5b3aab955007ba8ad7a'
@@ -21,6 +26,7 @@ module RemoteSmsHelper
       client = Twilio::REST::Client.new(account_sid, auth_token)
       client.account.sms.messages.create(:from => '+12133443930', :to => to_corrected, :body => message)
     else
+      # Prints the text that WOULD be sent to console
       logger.info("To #{to_corrected}")
       logger.info("\n \n!!!!!!!!!!!!!!!!!!!!!\n I sent: #{message} to phone #{to_corrected}\n!!!!!!!!!!!!!!!!!")
     end
@@ -29,7 +35,8 @@ module RemoteSmsHelper
   def receivedSMS(sms)
     users = User.where('user_phone == ?', sms.from)
     if not users.any?
-      sendSMS(sms.from, "You are an unkown users, fuck off")
+      #sendSMS(sms.from, "Agora, voce nao e um usuario do sistema, se quiser, voce pode se cadastrar no nosso sistema atraves do numero________.") 
+      sendSMS(sms.from, "You are not currently in Pipa's system. To register, call NUMBER.")
     else
       users.each do |user|
         logger.info(user)
@@ -43,6 +50,8 @@ module RemoteSmsHelper
           handleStatus(user, parsed)
         when :updatesavings
           handleUpdateSavings(user, parsed)
+        when :dreamcost
+          handleUpdateDreamCost(user, parsed)
         else
           handleError(user, parsed)
         end
@@ -68,13 +77,24 @@ module RemoteSmsHelper
   
   def handleSaved(u, parsed)
     logger.info(u)
+    oldTime = calcTimeToFinish(u.dream_cost, u.monthly_savings)
     u.dream_cost -= parsed[:value]
     u.save()
-    sendTimeRemaining(u)
+    newTime = calcTimeToFinish(u.dream_cost, u.monthly_savings)
+    timeDiff = oldTime - newTime
+    if u.monthly_savings < parsed[:value]
+      sendSMS(u.user_phone,"Great job! You are now saving more! This means your goal will be achieved in less time! Your goal is now about #{newTime} months away. That's #{timeDiff} months less than before.")
+    elsif u.monthly_savings > parsed[:value]
+      sendSMS(u.user_phone, "Okay. Good job, you saved R$ #{parsed[:value]}. Your monthly savings target is R$ #{u.monthly_savings}. Keep going and try to save monthly target and achieve your goal even faster. Your goal is now about #{newTime} months away.")
+    else
+      sendSMS(u.user_phone,"Good job. You saved what you said you could! Keep it up and achieve your goal in #{newTime} months.")
+    end
   end
   
   def handleStatus (u, parsed)
-    sendSMS(u.user_phone, u.to_s)
+    time= calcTimeToFinish(u.dream_cost, u.monthly_savings)
+    sendSMS(u.user_phone, "What's up, #{u.user_name}! Welcome to Pipa! Your goal is to buy a #{u.dream}. You need R$ #{u.dream_cost} more to achieve your dream. Right now, you think you can save R$ #{u.monthly_savings} each month. Based on your current savings level, your dream will be achieved in #{time} months.")
+    #sendSMS(u.user_phone, "E ai, #{u.user_name}! Bem vindo a Pipa! Sua meta e comprar #{u.dream}. Agora, voce precisa de R$ #{u.dream_cost} para alcancar sua meta. Baseado nos dados, sua meta pode ser alcancada em #{time} meses.")
   end
   
   def handleUpdateSavings (u, parsed)
@@ -85,6 +105,13 @@ module RemoteSmsHelper
       u.save()
       sendTimeRemaining(u)
     end
+  end
+  
+  def handleUpdateDreamCost (u, parsed)
+    u.dream_cost = parsed[:value]
+    u.save()
+    updatedTime = calcTimeToFinish(u.dream_cost, u.monthly_savings)
+    sendSMS(u.user_phone,"Okay! Your dream cost is updated. Right now, your dream will be achieved in #{updatedTime} months.")
   end
   
   def calcTimeToFinish(total, monthly)
@@ -100,6 +127,7 @@ module RemoteSmsHelper
       time = calcTimeToFinish(u.dream_cost, u.monthly_savings)
       sendSMS(u.user_phone, "Your dream is now #{time} months away")
     end
+    #!!!return [u.time, ]
   end
   
   def parseText(message)
@@ -118,6 +146,8 @@ module RemoteSmsHelper
         :status
       when /yes/i
         :updatesavings
+      when /DreamCost/i
+        :dreamcost
       else
         :error
     end

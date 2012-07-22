@@ -132,10 +132,10 @@ module RemoteSmsHelper
   
   def handleSaved(u, parsed, translate)
     logger.info(u)
-    oldTime = calcTimeToFinish(u.dream_cost, u.monthly_savings)
+    oldTime = calcTimeToFinish(u.dream_cost, u.monthly_savings, translate)
     u.dream_cost -= parsed[:value]
     u.save()
-    newTime = calcTimeToFinish(u.dream_cost, u.monthly_savings)
+    newTime = calcTimeToFinish(u.dream_cost, u.monthly_savings, translate)
     timeDiff = oldTime - newTime
     if translate == true
       if u.monthly_savings < parsed[:value]
@@ -143,7 +143,7 @@ module RemoteSmsHelper
       elsif u.monthly_savings > parsed[:value]
         sendSMS(u.user_phone, "Bom! Voce economizou R$ #{parsed[:value]}. Sua economia mensal e de R$ #{u.monthly_savings}. Continue assim mas tente economizar mais para alcancar sua meta mais rapido. Faltam #{newTime} meses para alcancar sua meta!")
       else
-        sendSMS(u.user_phone,"Bom trabalho! Voce economizou exatamente o que queria! Continue assim e voce chegara la em #{newTime} meses!")
+        sendSMS(u.user_phone,"Bom trabalho! Voce economizou o que queria! Continue assim e voce chegara la em #{newTime} meses!")
       end
     else
       if u.monthly_savings < parsed[:value]

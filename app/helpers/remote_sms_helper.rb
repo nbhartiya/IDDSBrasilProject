@@ -46,12 +46,25 @@ module RemoteSmsHelper
           handleSaved(user, parsed)
         when :purchase
           handlePurchase(user, parsed)
+        when :yes
+          handlePurchaseMade(user, parsed)
+        when :no
+          handlePurchaseNotMade(user, parsed)
         when :status
           handleStatus(user, parsed)
         when :updatesavings
           handleUpdateSavings(user, parsed)
         when :dreamcost
           handleUpdateDreamCost(user, parsed)
+        when :calculate
+          parsed2 = parseText2(sms.message)
+          handleCalculation(user, parsed2)
+        when :monthlysavings
+          handleUpdateMonthlySavings(user, parsed)
+        when :reminder
+          handleReminder(user, parsed)
+        when :tip
+          handleTip(user, parsed)
         else
           handleError(user, parsed)
         end
@@ -71,8 +84,19 @@ module RemoteSmsHelper
       time = calcTimeToFinish(u.dream_cost, u.monthly_savings)
       newtime = calcTimeToFinish(u.dream_cost, u.monthly_savings - parsed[:value])
       difference = newtime - time
-      sendSMS(u.user_phone, "If you make this purhcase, your dream will be #{newtime} months away. That is #{difference} more than before.")
+      sendSMS(u.user_phone, "If you make this purchase, your dream will be #{newtime} months away. That is #{difference} more than before.")
+      sendSMS(u.user_phone, "Did you buy it? If so, how much did you spend? If you bought, respond Yes and the amount you paid. Send No if you did not purchase.")
     end
+  end
+  
+  def handlePurchaseMade(u, parsed)
+    u.monthly_savings -= parsed[:value]
+    newtime = calcTimeToFinish(u.dream_cost, u.monthly_savings)
+    sendSMS(u.user_phone, "Okay, your goal is now #{newtime} months away.")
+  end
+  
+  def handlePurchaseNotMade(u, parsed)
+    sendSMS(u.user_phone, "Good job! Keep saving and you will achieve your dream in no time!")
   end
   
   def handleSaved(u, parsed)
@@ -114,6 +138,26 @@ module RemoteSmsHelper
     sendSMS(u.user_phone,"Okay! Your dream cost is updated. Right now, your dream will be achieved in #{updatedTime} months.")
   end
   
+  def handleUpdateMonthlySavings (u, parsed)
+    u.monthly_savings = parsed[:value]
+    u.save()
+    updatedTime = calcTimeToFinish(u.dream_cost, u.monthly_savings)
+    sendSMS(u.user_phone,"Okay! Your monthly savings estimate is upated. Right now, your dream will be achieved in #{updatedTime} months.")
+  end
+  
+  def handleCalculation (u, parsed2)
+    requiredSavings = parsed2.max/parsed2.min
+    sendSMS(u.user_phone, "Okay! To do this, you'll need to save about R$ #{requiredSavings} each month")
+  end
+  
+  def handleReminder (u, parsed)
+    sendSMS(u.user_phone, "It has been a month since you last saved. Your monthly savings target is R$ #{u.monthly_savings}. Would you like to save more money? If you do, send a text message with 'Saved' and the amount you saved.")
+  end
+  
+  def handleTip (u, parsed)
+    sendSMS(u.user_phone, "Did you know that you can find out more about Bank Accounts, Savings, or Credit Cards by calling NUMBER?")
+  end
+  
   def calcTimeToFinish(total, monthly)
     return (total / monthly).ceil
   end
@@ -148,10 +192,36 @@ module RemoteSmsHelper
         :updatesavings
       when /DreamCost/i
         :dreamcost
+      when /monthlysavings/i
+        :monthlysavings
+      when /calculate/i
+        :calculate
+      when /no/i
+        :no
+      when /reminder/i
+        :reminder
+      when /tip/i
+        :tip
       else
         :error
     end
-    logger.info("I zsfgdh this #{res}")
+    logger.info("I received this #{res}")
+    return res
+  end
+  
+  def parseText2(message)
+    res = []
+    m = message.scan(/\d+/)
+    logger.info("First part is #{m[0]}")
+    logger.info("Second part is #{m[1]}")
+    logger.info(m)
+
+    if m
+      res[0] = m[0].to_f
+      res[1] = m[1].to_f
+    end
+    
+    logger.info("I see this #{res}")
     return res
   end
 end

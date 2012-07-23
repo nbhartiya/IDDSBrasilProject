@@ -26,7 +26,7 @@ module RemoteSmsHelper
     logger.info("To #{to} at this time")
     
     # Only sends text through Twilio if the below line is changed to "true"
-    if false
+    if true
       #MATTS ACCOUNT
       account_sid = 'AC2894091dd9e7a5b3aab955007ba8ad7a'
       auth_token = '83f1ad3c2360f21d1e02d68b7c0009b9'
@@ -81,6 +81,9 @@ module RemoteSmsHelper
           handleReminder(user, parsed)
         when :tip
           handleTip(user, parsed)
+        when :nome
+          parsedName = parseName(sms.message)
+          handlename(user, parsedName, parsed)
         #when :signup
         #  handleSignup(user, parsed)
         #when :name
@@ -100,6 +103,16 @@ module RemoteSmsHelper
   
   def handleDream(user, parsed)
     #TO COME (REQUIRES BETTER PARSER)
+  end
+  
+  def handlename(u, parsedname, parsed)
+    thing=parsed[:type].to_sym
+    index=parsedname.index(thing) + 1
+    logger.info("TYPE #{thing}")
+    u.user_name=parsedname[index]
+    logger.info("")
+    u.save()
+    #SEND RESPONSE FOR NEXT STEP OF PROCESS
   end
   
   def handleError(user, parsed)
@@ -342,7 +355,7 @@ module RemoteSmsHelper
       when /cadastro/i
         :signup
       when /nome/i
-        :name
+        :nome
       when /quero/i
         :dream
       when /custo/i
@@ -367,6 +380,17 @@ module RemoteSmsHelper
     end
     
     logger.info("I see this #{res}")
+    return res
+  end
+  
+  def parseName(message)
+    res = message.split(' ')
+    logger.info("First part is #{res[0]}")
+    logger.info("Second part is #{res[1]}")
+    logger.info(res)
+    
+    logger.info("I see this #{res}")
+    
     return res
   end
 end

@@ -32,6 +32,7 @@ module RemoteSmsHelper
       auth_token = '83f1ad3c2360f21d1e02d68b7c0009b9'
       logger.info("#{account_sid}, #{auth_token}")
       logger.info("To#{to}")
+      logger.info("\n \n?????????????????\n I sent: #{message} to phone #{to_corrected}\n????????????????")
       client = Twilio::REST::Client.new(account_sid, auth_token)
       client.account.sms.messages.create(:from => '+12133443930', :to => to_corrected, :body => message)
     else
@@ -49,6 +50,9 @@ module RemoteSmsHelper
       else
         sendSMS(sms.from, "You are not currently in Pipa's system. To register, call +555181775601.")
       end
+      #NOT WORKING.. :-/
+      #User.new(:dream => "COMING", :dream_cost => "0", :monthly_savings => "1", :user_name => "NOME", :user_phone => sms.from)
+      #Users.save()
     else
       users.each do |user|
         logger.info(user)
@@ -84,6 +88,8 @@ module RemoteSmsHelper
         when :nome
           parsedName = parseName(sms.message)
           handlename(user, parsedName, parsed)
+        when :billreminder
+          handleBillReminder(user, parsed)
         #when :signup
         #  handleSignup(user, parsed)
         #when :name
@@ -107,12 +113,25 @@ module RemoteSmsHelper
   
   def handlename(u, parsedname, parsed)
     thing=parsed[:type].to_sym
-    index=parsedname.index(thing) + 1
-    logger.info("TYPE #{thing}")
-    u.user_name=parsedname[index]
-    logger.info("")
+    hash = Hash[parsedname.map.with_index{|*ki| ki}]    # => {"a"=>0, "b"=>1, "c"=>2}
+    logger.info("UGH #{hash}")
+    name=hash['Nome'] # => 1
+    logger.info("WHAT IS WRONG WITH THIS #{name}")
+    u.user_name=parsedname[name + 1]
+    dream=hash['quero']
+    u.dream = parsedname[dream+1]
+    dreamcost=hash['preco']
+    u.dream_cost = parsedname[dreamcost+1]
+    monthlysav=hash['minhaeconomia']
+    u.monthly_savings=parsedname[monthlysav+1]
     u.save()
-    #SEND RESPONSE FOR NEXT STEP OF PROCESS
+    time= calcTimeToFinish(u.dream_cost, u.monthly_savings)
+    logger.info("THIS IS WHERE THE PROBLEM IS #{u.user_phone}")
+    logger.info("Bem vindo ao Pipa, #{u.user_name}! Faltam R$ #{u.dream_cost.round} para voce comprar seu #{u.dream}. Economize #{u.monthly_savings.round} por mes e conseguira comprar seu #{u.dream} em #{time} meses.")
+    sendSMS(u.user_phone, "Bem vindo ao Pipa, #{u.user_name}! Faltam R$ #{u.dream_cost.round} para voce comprar seu #{u.dream}. Economize #{u.monthly_savings.round} por mes e conseguira comprar seu #{u.dream} em #{time} meses.")
+    #else
+    #  sendSMS(u.user_phone, "Welcome to Pipa, #{u.user_name}! You are R$ #{u.dream_cost.round} away from buying your #{u.dream}. Save #{u.monthly_savings.round} each month and you'll be able to buy your #{u.dream} in #{time} months.")
+    #end
   end
   
   def handleError(user, parsed)
@@ -164,6 +183,13 @@ module RemoteSmsHelper
     end
   end
   
+  def handleBillReminder(u, parsed)
+    if $translate == 'true'
+      sendSMS(u.user_phone, "Nao se esqueca que a parcela das Casas Bahia vence em dois dias!")
+    else
+      sendSMS(u.user_phone, "Don't forget your Casas Bahia bill is due in two days.")
+    end
+  end
   def handleSaved(u, parsed)
     logger.info(u)
     oldTime = calcTimeToFinish(u.dream_cost, u.monthly_savings)
@@ -342,8 +368,8 @@ module RemoteSmsHelper
         :yes
       when /MudouPreco/i
         :dreamcost
-      when /minhaeconomia/i
-        :monthlysavings
+      #when /minhaeconomia/i
+      #  :monthlysavings
       when /calcular/i
         :calculate
       when /nao/i
@@ -360,6 +386,8 @@ module RemoteSmsHelper
         :dream
       when /custo/i
         :dreamcost
+      when /contas/i
+        :billreminder
       else
         :error
     end

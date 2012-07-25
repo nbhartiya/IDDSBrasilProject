@@ -26,7 +26,7 @@ module RemoteSmsHelper
     logger.info("To #{to} at this time")
     
     # Only sends text through Twilio if the below line is changed to "true"
-    if true
+    if false
       #MATTS ACCOUNT
       account_sid = 'AC2894091dd9e7a5b3aab955007ba8ad7a'
       auth_token = '83f1ad3c2360f21d1e02d68b7c0009b9'
@@ -90,6 +90,9 @@ module RemoteSmsHelper
           handlename(user, parsedName, parsed)
         when :billreminder
           handleBillReminder(user, parsed)
+        when :bill2
+          parsedName = parseName(sms.message)
+          handleBill2(user, parsedName, parsed)
         #when :signup
         #  handleSignup(user, parsed)
         #when :name
@@ -134,6 +137,20 @@ module RemoteSmsHelper
     #end
   end
   
+  def handleBill2(u, parsedname, parsed)
+    thing = parsed[:type].to_sym
+    hash = Hash[parsedname.map.with_index{|*ki| ki}]    # => {"a"=>0, "b"=>1, "c"=>2}
+    pagar = hash['Pagar'] # => 1
+    billFor = parsedname[pagar + 1]
+    monthlycost = parsedname[pagar + 2]
+    dia = hash['dia']
+    day = parsedname[dia + 1]
+    meses = hash ['meses']
+    length = parsedname[meses-1]
+    #logger.info("Nao se esqueca que a parcela das #{billFor} vence em dois dias! Nos vamos continuar te lembrando por mais #{length} meses ate as parcelas acabem.")
+    sendSMS(u.user_phone, "Nao se esqueca que a parcela de #{billFor} vence em dois dias! Nos vamos continuar avisando por mais #{length} meses ate que as parcelas acabem.")
+  end
+  
   def handleError(user, parsed)
     if $translate=='true'
       sendSMS(user.user_phone,
@@ -166,6 +183,7 @@ module RemoteSmsHelper
   end
   
   def handlePurchaseMade(u, parsed)
+    #sendSMS(u.user_phone, "Por favor digite 'sim' e custo o mensal.")
     u.monthly_savings -= parsed[:value]
     newtime = calcTimeToFinish(u.dream_cost, u.monthly_savings)
     if $translate == 'true'
@@ -219,7 +237,7 @@ module RemoteSmsHelper
   def handleStatus (u, parsed)
     time= calcTimeToFinish(u.dream_cost, u.monthly_savings)
     if $translate == 'true'
-      sendSMS(u.user_phone, "Bem vindo ao Pipa, #{u.user_name}! Faltam R$ #{u.dream_cost.round} para voce comprar seu #{u.dream}. Economize #{u.monthly_savings.round} por mes e conseguira comprar seu #{u.dream} em #{time} meses.")
+      sendSMS(u.user_phone, "Bem vindo ao Pipa, #{u.user_name}! Faltam R$ #{u.dream_cost.round} para voce comprar #{u.dream}. Economize #{u.monthly_savings.round} por mes e conseguira comprar #{u.dream} em #{time} meses.")
     else
       sendSMS(u.user_phone, "Welcome to Pipa, #{u.user_name}! You are R$ #{u.dream_cost.round} away from buying your #{u.dream}. Save #{u.monthly_savings.round} each month and you'll be able to buy your #{u.dream} in #{time} months.")
     end
@@ -386,8 +404,10 @@ module RemoteSmsHelper
         :dream
       when /custo/i
         :dreamcost
-      when /contas/i
+      when /conta/i
         :billreminder
+      when /pagar/i
+        :bill2
       else
         :error
     end

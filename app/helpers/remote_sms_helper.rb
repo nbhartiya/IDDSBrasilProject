@@ -50,9 +50,9 @@ module RemoteSmsHelper
       else
         sendSMS(sms.from, "You are not currently in Pipa's system. To register, call +555181775601.")
       end
-      #NOT WORKING.. :-/
-      #User.new(:dream => "COMING", :dream_cost => "0", :monthly_savings => "1", :user_name => "NOME", :user_phone => sms.from)
-      #Users.save()
+      #WORKING :-)
+      u = User.new(:dream => "COMING", :dream_cost => "0", :monthly_savings => "1", :user_name => "NOME", :user_phone => sms.from)
+      u.save()
     else
       users.each do |user|
         logger.info(user)
@@ -74,6 +74,9 @@ module RemoteSmsHelper
           handleStatus(user, parsed)
         when :updatesavings
           handleUpdateSavings(user, parsed)
+        when :dream
+          parsedname = parseName(sms.message)
+          handleDream(user, parsedname, parsed)
         when :dreamcost
           handleUpdateDreamCost(user, parsed)
         when :calculate
@@ -106,35 +109,81 @@ module RemoteSmsHelper
     end
   end
   
-  def handlesignup(u, parsed)
-    #TO COME
-  end
-  
-  def handleDream(user, parsed)
-    #TO COME (REQUIRES BETTER PARSER)
+  def handlesignup(u, parsedname, parsed)
+    sendSMS(u.user_phone, "Obrigado! Agora envie uma mensagem com o texto 'nome' seguido de seu nome para #{$Pipa_number}.")
   end
   
   def handlename(u, parsedname, parsed)
     thing=parsed[:type].to_sym
-    hash = Hash[parsedname.map.with_index{|*ki| ki}]    # => {"a"=>0, "b"=>1, "c"=>2}
-    logger.info("UGH #{hash}")
-    name=hash['Nome'] # => 1
-    logger.info("WHAT IS WRONG WITH THIS #{name}")
-    u.user_name=parsedname[name + 1]
-    dream=hash['quero']
-    u.dream = parsedname[dream+1]
-    dreamcost=hash['preco']
-    u.dream_cost = parsedname[dreamcost+1]
-    monthlysav=hash['minhaeconomia']
-    u.monthly_savings=parsedname[monthlysav+1]
+    hash_upper = Hash[parsedname.map.with_index{|*ki| ki}]    # => {"a"=>0, "b"=>1, "c"=>2}
+    hash_lower = {}
+    hash_upper.each_pair do |k,v|
+      hash_lower.merge!({k.downcase => v})
+    end
+    name = hash_lower['nome'] # => 1
+    u.user_name = parsedname [name + 1]
     u.save()
-    time= calcTimeToFinish(u.dream_cost, u.monthly_savings)
-    logger.info("THIS IS WHERE THE PROBLEM IS #{u.user_phone}")
-    logger.info("Bem vindo ao Pipa, #{u.user_name}! Faltam R$ #{u.dream_cost.round} para voce comprar seu #{u.dream}. Economize #{u.monthly_savings.round} por mes e conseguira comprar seu #{u.dream} em #{time} meses.")
-    sendSMS(u.user_phone, "Bem vindo ao Pipa, #{u.user_name}! Faltam R$ #{u.dream_cost.round} para voce comprar seu #{u.dream}. Economize #{u.monthly_savings.round} por mes e conseguira comprar seu #{u.dream} em #{time} meses.")
-    #else
-    #  sendSMS(u.user_phone, "Welcome to Pipa, #{u.user_name}! You are R$ #{u.dream_cost.round} away from buying your #{u.dream}. Save #{u.monthly_savings.round} each month and you'll be able to buy your #{u.dream} in #{time} months.")
-    #end
+    sendSMS(u.user_phone, "Obrigado mais uma vez! Agora envie uma mensagem com o texto eu 'quero' e em seguida escreva sua meta e envie para #{$Pipa_number}.")
+  end
+  
+  # **OLDER WAY OF DOING IT**
+  #def handlename(u, parsedname, parsed)
+  #  thing=parsed[:type].to_sym
+  #  hash = Hash[parsedname.map.with_index{|*ki| ki}]    # => {"a"=>0, "b"=>1, "c"=>2}
+  #  #logger.info("UGH #{hash}")
+  #  name=hash['Nome'] # => 1
+  #  logger.info("WHAT IS WRONG WITH THIS #{name}")
+  #  u.user_name=parsedname[name + 1]
+  #  dream=hash['quero']
+  #  u.dream = parsedname[dream+1]
+  #  dreamcost=hash['preco']
+  #  u.dream_cost = parsedname[dreamcost+1]
+  #  monthlysav=hash['minhaeconomia']
+  #  u.monthly_savings=parsedname[monthlysav+1]
+  #  u.save()
+  #  time= calcTimeToFinish(u.dream_cost, u.monthly_savings)
+  #  logger.info("THIS IS WHERE THE PROBLEM IS #{u.user_phone}")
+  #  logger.info("Bem vindo ao Pipa, #{u.user_name}! Faltam R$ #{u.dream_cost.round} para voce comprar seu #{u.dream}. Economize #{u.monthly_savings.round} por mes e conseguira comprar seu #{u.dream} em #{time} meses.")
+  #  sendSMS(u.user_phone, "Bem vindo ao Pipa, #{u.user_name}! Faltam R$ #{u.dream_cost.round} para voce comprar seu #{u.dream}. Economize #{u.monthly_savings.round} por mes e conseguira comprar seu #{u.dream} em #{time} meses.")
+  #  #else
+  #  #  sendSMS(u.user_phone, "Welcome to Pipa, #{u.user_name}! You are R$ #{u.dream_cost.round} away from buying your #{u.dream}. Save #{u.monthly_savings.round} each month and you'll be able to buy your #{u.dream} in #{time} months.")
+  #  #end
+  #end
+
+  def handleDream (u, parsedname, parsed)
+    thing=parsed[:type].to_sym
+    hash_upper = Hash[parsedname.map.with_index{|*ki| ki}]    # => {"a"=>0, "b"=>1, "c"=>2}
+    hash_lower = {}
+    hash_upper.each_pair do |k,v|
+      hash_lower.merge!({k.downcase => v})
+    end
+    want = hash_lower['quero'] # => 1
+    u.dream = parsedname [want + 1]
+    u.save()
+    sendSMS(u.user_phone, "Ae!! Estamos quase terminando. Por favor, envie uma mensagem com o texto 'custo' seguido do preco da sua meta para #{$Pipa_number}.")
+  end
+  
+  def handleUpdateDreamCost (u, parsed)
+    u.dream_cost = parsed[:value]
+    u.save()
+    #updatedTime = calcTimeToFinish(u.dream_cost, u.monthly_savings)
+    if $translate == 'true'
+      sendSMS(u.user_phone,"Ufa!! Para terminar, envie uma mensagem com o texto 'minhaeconomia' seguido do valor que deseja economizar por mes para #{$Pipa_number} e prepare-se para economizar!")
+    else
+      #NEED TO FIX THIS TO MATCH PORTUGUESE VERSION
+      #sendSMS(u.user_phone,"Okay! Your dream cost is updated. Right now, your goal will be achieved in #{updatedTime} months.")
+    end
+  end
+  
+  def handleUpdateMonthlySavings (u, parsed)
+    u.monthly_savings = parsed[:value]
+    u.save()
+    updatedTime = calcTimeToFinish(u.dream_cost, u.monthly_savings)
+    if $translate == 'true'
+      sendSMS(u.user_phone,"Sim. Sua economia mensal mudou. Portanto, voce vai conseguir o que queria em #{updatedTime} meses.")
+    else
+      sendSMS(u.user_phone,"Okay! Your monthly savings estimate is upated. Right now, your dream will be achieved in #{updatedTime} months.")
+    end
   end
   
   def handleBill2(u, parsedname, parsed)
@@ -183,7 +232,6 @@ module RemoteSmsHelper
   end
   
   def handlePurchaseMade(u, parsed)
-    #sendSMS(u.user_phone, "Por favor digite 'sim' e custo o mensal.")
     u.monthly_savings -= parsed[:value]
     newtime = calcTimeToFinish(u.dream_cost, u.monthly_savings)
     if $translate == 'true'
@@ -208,6 +256,7 @@ module RemoteSmsHelper
       sendSMS(u.user_phone, "Don't forget your Casas Bahia bill is due in two days.")
     end
   end
+  
   def handleSaved(u, parsed)
     logger.info(u)
     oldTime = calcTimeToFinish(u.dream_cost, u.monthly_savings)
@@ -259,27 +308,7 @@ module RemoteSmsHelper
   #  end
   #end
   
-  def handleUpdateDreamCost (u, parsed)
-    u.dream_cost = parsed[:value]
-    u.save()
-    updatedTime = calcTimeToFinish(u.dream_cost, u.monthly_savings)
-    if $translate == 'true'
-      sendSMS(u.user_phone,"O preco do que voce queria mudou. Agora voce podera comprar em #{updatedTime} meses.")
-    else
-      sendSMS(u.user_phone,"Okay! Your dream cost is updated. Right now, your goal will be achieved in #{updatedTime} months.")
-    end
-  end
   
-  def handleUpdateMonthlySavings (u, parsed)
-    u.monthly_savings = parsed[:value]
-    u.save()
-    updatedTime = calcTimeToFinish(u.dream_cost, u.monthly_savings)
-    if $translate == 'true'
-      sendSMS(u.user_phone,"Sim. Sua economia mensal mudou. Portanto, voce vai conseguir o que queria em #{updatedTime} meses.")
-    else
-      sendSMS(u.user_phone,"Okay! Your monthly savings estimate is upated. Right now, your dream will be achieved in #{updatedTime} months.")
-    end
-  end
   
   def handleCalculation (u, parsed2)
     requiredSavings = parsed2.max/parsed2.min
@@ -386,8 +415,8 @@ module RemoteSmsHelper
         :yes
       when /MudouPreco/i
         :dreamcost
-      #when /minhaeconomia/i
-      #  :monthlysavings
+      when /minhaeconomia/i
+        :monthlysavings
       when /calcular/i
         :calculate
       when /nao/i

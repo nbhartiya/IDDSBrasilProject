@@ -1,6 +1,5 @@
 class RemoteSm < ActiveRecord::Base
-  attr_accessible :from, :message, :secret
-  attr_accessible :user_id
+  attr_accessible :from, :message, :secret, :user_id
   belongs_to :user
   
   #creates a to string method that is called for string interpolation (so its not an abstract number and we can log it)

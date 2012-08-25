@@ -7,8 +7,13 @@ module RemoteSmsHelper
   #4. How to look at a list of texts associated with each user...
   
   require 'twilio-ruby' #Get this to use the Twilio Gem
-  load 'my_constants.rb'
+  #require 'rufus-scheduler'
+  #scheduler = Rufus::Scheduler.start_new
   
+  load 'constants.rb'
+  
+  
+  $TRANSLATE = 'true'
   #Sends SMS
   def sendSMS (to, message)
     # Checks if the phone number is in the right format.
@@ -28,12 +33,12 @@ module RemoteSmsHelper
     # Only sends text through Twilio if the below line is changed to "true"
     if false
       #MATTS ACCOUNT
-      account_sid = 'AC2894091dd9e7a5b3aab955007ba8ad7a'
-      auth_token = '83f1ad3c2360f21d1e02d68b7c0009b9'
-      logger.info("#{account_sid}, #{auth_token}")
+      #account_sid = 'AC2894091dd9e7a5b3aab955007ba8ad7a'
+      #auth_token = '83f1ad3c2360f21d1e02d68b7c0009b9'
+      logger.info("#{ACCOUNT_SID}, #{AUTH_TOKEN}")
       logger.info("To#{to}")
       logger.info("\n \n?????????????????\n I sent: #{message} to phone #{to_corrected}\n????????????????")
-      client = Twilio::REST::Client.new(account_sid, auth_token)
+      client = Twilio::REST::Client.new(ACCOUNT_SID, AUTH_TOKEN)
       client.account.sms.messages.create(:from => '+12133443930', :to => to_corrected, :body => message)
     else
       # Prints the text that WOULD be sent to console
@@ -45,8 +50,8 @@ module RemoteSmsHelper
   def receivedSMS(sms)
     users = User.where('user_phone == ?', sms.from)
     if not users.any?
-      if $translate == 'true'
-        sendSMS(sms.from, "Voce nao esta cadastrado no Projeto Pipa. Se quiser se cadastrar, envie uma mensagem com o texto 'cadastro' para #{$Pipa_number}.") 
+      if $TRANSLATE == 'true'
+        sendSMS(sms.from, "Voce nao esta cadastrado no Projeto Pipa. Se quiser se cadastrar, envie uma mensagem com o texto 'cadastro' para #{$PIPA_NUMBER}.") 
       else
         sendSMS(sms.from, "You are not currently in Pipa's system. To register, call +555181775601.")
       end
@@ -56,7 +61,7 @@ module RemoteSmsHelper
     else
       users.each do |user|
         logger.info(user)
-        if $translate=='true'
+        if $TRANSLATE=='true'
           parsed=parseTextPort(sms.message)
         else
           parsed=parseText(sms.message)
@@ -90,18 +95,19 @@ module RemoteSmsHelper
           handleTip(user, parsed)
         when :nome
           parsedName = parseName(sms.message)
-          handlename(user, parsedName, parsed)
+          handleName(user, parsedName, parsed)
         when :billreminder
           handleBillReminder(user, parsed)
         when :bill2
           parsedName = parseName(sms.message)
           handleBill2(user, parsedName, parsed)
-        #when :signup
-        #  handleSignup(user, parsed)
+        when :signup
+          handleSignup(user, parsed)
         #when :name
-        #  handleName(user, parsed)
-        #when :dream
-        #  handleDream(user,parsed)
+        #  parsedName = parseName(sms.message)
+        #  handleName(user, parsedName, parsed)
+        when :dream
+          handleDream(user,parsed)
         else
           handleError(user, parsed)
         end
@@ -109,11 +115,11 @@ module RemoteSmsHelper
     end
   end
   
-  def handlesignup(u, parsedname, parsed)
-    sendSMS(u.user_phone, "Obrigado! Agora envie uma mensagem com o texto 'nome' seguido de seu nome para #{$Pipa_number}.")
+  def handleSignup(u, parsed)
+    sendSMS(u.user_phone, "Obrigado! Agora envie uma mensagem com o texto 'nome' seguido de seu nome para #{$PIPA_NUMBER}.")
   end
   
-  def handlename(u, parsedname, parsed)
+  def handleName(u, parsedname, parsed)
     thing=parsed[:type].to_sym
     hash_upper = Hash[parsedname.map.with_index{|*ki| ki}]    # => {"a"=>0, "b"=>1, "c"=>2}
     hash_lower = {}
@@ -123,7 +129,7 @@ module RemoteSmsHelper
     name = hash_lower['nome'] # => 1
     u.user_name = parsedname [name + 1]
     u.save()
-    sendSMS(u.user_phone, "Obrigado mais uma vez! Agora envie uma mensagem com o texto eu 'quero' e em seguida escreva sua meta e envie para #{$Pipa_number}.")
+    sendSMS(u.user_phone, "Obrigado mais uma vez! Agora envie uma mensagem com o texto eu 'quero' e em seguida escreva sua meta e envie para #{$PIPA_NUMBER}.")
   end
   
   # **OLDER WAY OF DOING IT**
@@ -160,15 +166,15 @@ module RemoteSmsHelper
     want = hash_lower['quero'] # => 1
     u.dream = parsedname [want + 1]
     u.save()
-    sendSMS(u.user_phone, "Ae!! Estamos quase terminando. Por favor, envie uma mensagem com o texto 'custo' seguido do preco da sua meta para #{$Pipa_number}.")
+    sendSMS(u.user_phone, "Ae!! Estamos quase terminando. Por favor, envie uma mensagem com o texto 'custo' seguido do preco da sua meta para #{$PIPA_NUMBER}.")
   end
   
   def handleUpdateDreamCost (u, parsed)
     u.dream_cost = parsed[:value]
     u.save()
     #updatedTime = calcTimeToFinish(u.dream_cost, u.monthly_savings)
-    if $translate == 'true'
-      sendSMS(u.user_phone,"Ufa!! Para terminar, envie uma mensagem com o texto 'minhaeconomia' seguido do valor que deseja economizar por mes para #{$Pipa_number} e prepare-se para economizar!")
+    if $TRANSLATE == 'true'
+      sendSMS(u.user_phone,"Para terminar, envie uma mensagem com o texto 'minhaeconomia' seguido do valor que deseja economizar por mes e prepare-se para economizar!")
     else
       #NEED TO FIX THIS TO MATCH PORTUGUESE VERSION
       #sendSMS(u.user_phone,"Okay! Your dream cost is updated. Right now, your goal will be achieved in #{updatedTime} months.")
@@ -179,7 +185,7 @@ module RemoteSmsHelper
     u.monthly_savings = parsed[:value]
     u.save()
     updatedTime = calcTimeToFinish(u.dream_cost, u.monthly_savings)
-    if $translate == 'true'
+    if $TRANSLATE == 'true'
       sendSMS(u.user_phone,"Sim. Sua economia mensal mudou. Portanto, voce vai conseguir o que queria em #{updatedTime} meses.")
     else
       sendSMS(u.user_phone,"Okay! Your monthly savings estimate is upated. Right now, your dream will be achieved in #{updatedTime} months.")
@@ -201,7 +207,7 @@ module RemoteSmsHelper
   end
   
   def handleError(user, parsed)
-    if $translate=='true'
+    if $TRANSLATE=='true'
       sendSMS(user.user_phone,
             "A mensagem nao foi enviada corretamente. Por favor, leia o guia de uso e tente novamente.")
     else
@@ -212,18 +218,21 @@ module RemoteSmsHelper
   
   def handlePurchase(u, parsed)
     if u.monthly_savings <= parsed[:value]
-      if $translate='true'
+      if $TRANSLATE == 'true'
         sendSMS(u.user_phone, "Desculpe, mas voce tera que reduzir outras compras para conseguir fazer esta compra.")
       else
         sendSMS(u.user_phone, "You will need to reduce your other purchases in order to make this purchase")
       end  
     else
+      #new = eval(30.sec.from_now)
       time = calcTimeToFinish(u.dream_cost, u.monthly_savings)
       newtime = calcTimeToFinish(u.dream_cost, u.monthly_savings - parsed[:value])
       difference = newtime - time
-      if $translate == 'true'
+      if $TRANSLATE == 'true'
         sendSMS(u.user_phone, "Beleza! Mas lembre que se voce comprar isso vai economizar menos e por isso sua meta vai demorar mais #{newtime} meses. Sao #{difference} meses a mais!")
+        #scheduler.cron(new) do
         sendSMS(u.user_phone, "Voce fez a compra? Se sim, quanto voce gastou? Responda 'Sim' e digite quanto gastou ou 'Nao' gastei, se voce nao comprou.")
+        #end
       else
         sendSMS(u.user_phone, "If you make this purchase, your dream will be #{newtime} months away. That is #{difference} more than before.")
         sendSMS(u.user_phone, "Did you buy it? If so, how much did you spend? If you bought, respond Yes and the amount you paid. Send No if you did not purchase.")
@@ -234,7 +243,7 @@ module RemoteSmsHelper
   def handlePurchaseMade(u, parsed)
     u.monthly_savings -= parsed[:value]
     newtime = calcTimeToFinish(u.dream_cost, u.monthly_savings)
-    if $translate == 'true'
+    if $TRANSLATE == 'true'
       sendSMS(u.user_phone, "OK. Mas voce demorara #{newtime} meses para conseguir comprar o que voce quer comprar.")
     else
       sendSMS(u.user_phone, "Okay, but it will take you #{newtime} to buy what you want to buy.")
@@ -242,7 +251,7 @@ module RemoteSmsHelper
   end
   
   def handlePurchaseNotMade(u, parsed)
-    if $translate == 'true'
+    if $TRANSLATE == 'true'
       sendSMS(u.user_phone, "Legal! Continue economizando e voce chegara la logo, logo!")
     else
       sendSMS(u.user_phone, "Good job! Keep saving and you will achieve your dream in no time!")
@@ -250,7 +259,7 @@ module RemoteSmsHelper
   end
   
   def handleBillReminder(u, parsed)
-    if $translate == 'true'
+    if $TRANSLATE == 'true'
       sendSMS(u.user_phone, "Nao se esqueca que a parcela das Casas Bahia vence em dois dias!")
     else
       sendSMS(u.user_phone, "Don't forget your Casas Bahia bill is due in two days.")
@@ -264,7 +273,7 @@ module RemoteSmsHelper
     u.save()
     newTime = calcTimeToFinish(u.dream_cost, u.monthly_savings)
     timeDiff = (oldTime - newTime)
-    if $translate == 'true'
+    if $TRANSLATE == 'true'
       if u.monthly_savings < parsed[:value]
         sendSMS(u.user_phone,"Isso ae! Voce esta economizando mais! Isso quer dizer que voce vai comprar o que quer em menos tempo! Agora so faltam #{newTime} meses!")
       elsif u.monthly_savings > parsed[:value]
@@ -285,7 +294,7 @@ module RemoteSmsHelper
   
   def handleStatus (u, parsed)
     time= calcTimeToFinish(u.dream_cost, u.monthly_savings)
-    if $translate == 'true'
+    if $TRANSLATE == 'true'
       sendSMS(u.user_phone, "Bem vindo ao Pipa, #{u.user_name}! Faltam R$ #{u.dream_cost.round} para voce comprar #{u.dream}. Economize #{u.monthly_savings.round} por mes e conseguira comprar #{u.dream} em #{time} meses.")
     else
       sendSMS(u.user_phone, "Welcome to Pipa, #{u.user_name}! You are R$ #{u.dream_cost.round} away from buying your #{u.dream}. Save #{u.monthly_savings.round} each month and you'll be able to buy your #{u.dream} in #{time} months.")
@@ -296,7 +305,7 @@ module RemoteSmsHelper
   # BELOW CODE NOT USED
   #def handleUpdateSavings (u, parsed)
   #  if u.monthly_savings <= parsed[:value]
-  #    if $translate == 'true'
+  #    if $TRANSLATE == 'true'
   #      sendSMS(u.user_phone, "Voce tem certeza que poderia ter feito esta compra?")
   #    else
   #      sendSMS(u.user_phone, "Are you sure you could have made that purchase?")
@@ -312,7 +321,7 @@ module RemoteSmsHelper
   
   def handleCalculation (u, parsed2)
     requiredSavings = parsed2.max/parsed2.min
-    if $translate == 'true'
+    if $TRANSLATE == 'true'
       sendSMS(u.user_phone, "Ok. Para fazer isso, voce precisara economizar R$ #{requiredSavings.round} todo mes.")
     else
       sendSMS(u.user_phone, "Okay! To do this, you'll need to save about R$ #{requiredSavings.round} each month")
@@ -320,7 +329,7 @@ module RemoteSmsHelper
   end
   
   def handleReminder (u, parsed)
-    if $translate == 'true'
+    if $TRANSLATE == 'true'
       sendSMS(u.user_phone, "Ei! Faz um mes desde sua ultima economia e disse que salvaria #{u.monthly_savings.round} por mes.Pode economizar agora?Envie uma mensagem com 'Economia' e quanto economizou.")
     else
       sendSMS(u.user_phone, "It has been a month since you last saved. Your monthly savings target is R$ #{u.monthly_savings}. Would you like to save more money? If you do, send a text message with 'Saved' and the amount you saved.")
@@ -328,8 +337,8 @@ module RemoteSmsHelper
   end
   
   def handleTip (u, parsed)
-    if $translate == 'true'
-      sendSMS(u.user_phone, "Voce sabia que voce pode saber mais sobre Conta Bancaria, Economia ou Cartao de Credito discando #{$Pipa_number}.")
+    if $TRANSLATE == 'true'
+      sendSMS(u.user_phone, "Voce sabia que voce pode saber mais sobre Conta Bancaria, Economia ou Cartao de Credito discando #{$PIPA_NUMBER}.")
     else
       sendSMS(u.user_phone, "Did you know that you can find out more about Bank Accounts, Savings, or Credit Cards by calling NUMBER?")
     end
@@ -340,7 +349,7 @@ module RemoteSmsHelper
   end
   
   def sendTimeRemaining(u)
-    if $translate == 'true'
+    if $TRANSLATE == 'true'
       if u.dream_cost <= 0
         sendSMS(u.user_phone,"Voce economizou o suficiente para conseguir o que voce quer.")
       elsif u.monthly_savings <= 0
@@ -415,7 +424,7 @@ module RemoteSmsHelper
         :yes
       when /MudouPreco/i
         :dreamcost
-      when /minhaeconomia/i
+      when /minha/i
         :monthlysavings
       when /calcular/i
         :calculate

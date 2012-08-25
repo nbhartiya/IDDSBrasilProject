@@ -47,7 +47,7 @@ class RemoteSmsController < ApplicationController
     
     logger.info("received an SMS: #{params}") #LOG EACH MESSAGE
     
-    if params[:remote_sm] #!!!NEED TO UNDERSTAND WHEN THIS IS TRUE AND WHEN FALSE....!!!
+    if params[:remote_sm]
       @remote_sm = RemoteSm.new(params[:remote_sm])
       
       respond_to do |format| #STUFF THAT WAS THERE BEFORE (SAVING A NEW REMOTE SMS)

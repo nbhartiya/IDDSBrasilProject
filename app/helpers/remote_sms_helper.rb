@@ -33,8 +33,8 @@ module RemoteSmsHelper
     # Only sends text through Twilio if the below line is changed to "true"
     if false
       #MATTS ACCOUNT
-      #account_sid = 'AC2894091dd9e7a5b3aab955007ba8ad7a'
-      #auth_token = '83f1ad3c2360f21d1e02d68b7c0009b9'
+      #account_sid = 'TO ENTER'
+      #auth_token = 'TO ENTER'
       logger.info("#{ACCOUNT_SID}, #{AUTH_TOKEN}")
       logger.info("To#{to}")
       logger.info("\n \n?????????????????\n I sent: #{message} to phone #{to_corrected}\n????????????????")
